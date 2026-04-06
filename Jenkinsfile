@@ -10,7 +10,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/<your-username>/cicd-pipeline.git'
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/AryenSGarg/cicd-pipeline.git'
             }
         }
 
@@ -24,6 +24,7 @@ pipeline {
                         env.PORT = "3001"
                         env.IMAGE_NAME = "nodedev:v1.0"
                     }
+                    echo "Deploying ${env.IMAGE_NAME} on port ${env.PORT}"
                 }
             }
         }
@@ -36,22 +37,23 @@ pipeline {
 
         stage('Test') {
             steps {
-                bat 'npm test || echo No tests'
+                bat 'npm test || echo No tests found'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                bat "docker build -t %IMAGE_NAME% ."
+                bat "docker build -t ${env.IMAGE_NAME} ."
             }
         }
 
         stage('Deploy') {
             steps {
                 script {
+                    // Stop old container with same image name if exists
                     bat """
-                    docker ps -q --filter "publish=%PORT%" | FOR /F %i IN ('more') DO docker stop %i
-                    docker run -d -p %PORT%:%PORT% %IMAGE_NAME%
+                    for /f "tokens=*" %%i in ('docker ps -q --filter "ancestor=${env.IMAGE_NAME}"') do docker stop %%i
+                    docker run -d -p ${env.PORT}:${env.PORT} --name ${env.IMAGE_NAME} ${env.IMAGE_NAME}
                     """
                 }
             }
